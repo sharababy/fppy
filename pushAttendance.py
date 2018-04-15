@@ -4,10 +4,10 @@ conn = sq.connect("attendance.db");
 
 c  = conn.cursor();
 
-c.execute("SELECT s.id FROM student as s WHERE sha=?", (sha,))
+c.execute("SELECT * FROM attendance3 where syncstatus = 0")
  
 rows = c.fetchall()
 
-# print(rows[0][0])
+print(rows)
 
 conn.close();
