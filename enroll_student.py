@@ -6,6 +6,11 @@ PyFingerprint
 Copyright (C) 2015 Bastian Raschke <bastian.raschke@posteo.de>
 All rights reserved.
 
+black - gnd
+red - 3.3
+blue - tx
+yello - rx
+
 """
 import hashlib
 import time
