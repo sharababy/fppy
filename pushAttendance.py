@@ -22,4 +22,6 @@ request = Request(url, urlencode(post_fields).encode())
 json = urlopen(request).read().decode()
 # print(json)
 
+c.execute("UPDATE attendance3 set syncstatus = 1 where syncstatus = 0;")
+
 conn.close();
