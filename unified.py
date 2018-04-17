@@ -19,7 +19,7 @@ current_menu = 0;
 class Figpi:
 
 	def setup(self):
-		self.printMenuItem(0)		
+		
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setup(left, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 		GPIO.setup(right, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -39,7 +39,53 @@ class Figpi:
 		else:
 			self.printLCD("-Use Arrow Keys-\nReady !")
 
+
+	def makeMenu(self,options):
+		menu = -1
+		self.printLCD("-Use Arrow Keys-")
+		while True:			
+			if  GPIO.input(left) == False:
+				
+				print('Left Button Pressed...')
+				
+				if menu > 1:
+
+					menu = menu-1;
+					print(menu)
+					self.printLCD("-Use Arrow Keys-\n"+str(options[menu][0]))
+
+				while GPIO.input(left) == False:
+					time.sleep(0.2)
+
+			if GPIO.input(right) == False:
+				
+				print('Right Button Pressed...')
+				
+				if menu < len(options)-1:
+					menu = menu+1;
+					print(menu)
+					self.printLCD("-Use Arrow Keys-\n"+str(options[menu][0]))
+
+				while GPIO.input(right) == False:
+					time.sleep(0.2)
+
+
+			elif GPIO.input(select) == False:
+				
+				print('Select Button Pressed...')
+				return menu;
+
+
+	def execute(self,item):
+		if item == 1:
+			self.take_attendance();
+		elif item == 2:
+			self.enroll_faculty();
+		elif item == 3:
+			self.enroll_student();
+
 	def startx(self):
+		self.printMenuItem(0)
 		global current_menu;
 		while True:			
 			# print("yo")
@@ -68,11 +114,12 @@ class Figpi:
 					time.sleep(0.2)
 
 
-			# elif GPIO.input(select) == True:
+			elif GPIO.input(select) == False:
 				
-			# 	print('Select Button Pressed...')
-			# 	while GPIO.input(select) == True:
-			# 		time.sleep(0.2)
+				print('Select Button Pressed...')
+				self.execute(current_menu);
+				while GPIO.input(select) == False:
+					time.sleep(0.2)
 
 	def push_attendance(self):
 		conn = sq.connect("./attendance.db");
@@ -208,69 +255,7 @@ class Figpi:
 
 
 
-		## Search for a finger
-		##
-
-		## Tries to initialize the sensor
-		try:
-		    f = PyFingerprint('/dev/serial0', 57600, 0xFFFFFFFF, 0x00000000)
-
-		    if ( f.verifyPassword() == False ):
-		        raise ValueError('The given fingerprint sensor password is wrong!')
-
-		except Exception as e:
-		    print('The fingerprint sensor could not be initialized!')
-		    print('Exception message: ' + str(e))
-		    exit(1)
-
-		## Gets some sensor information
-		print('Currently used templates: ' + str(f.getTemplateCount()) +'/'+ str(f.getStorageCapacity()))
-
-		## Tries to search the finger and calculate hash
-		try:
-		    print('Waiting for finger...')
-
-		    ## Wait that finger is read
-		    while ( f.readImage() == False ):
-		        pass
-
-		    ## Converts read image to characteristics and stores it in charbuffer 1
-		    f.convertImage(0x01)
-
-		    ## Searchs template
-		    result = f.searchTemplate()
-
-		    positionNumber = result[0]
-		    accuracyScore = result[1]
-
-		    if ( positionNumber == -1 ):
-		        print('No match found!')
-		        exit(0)
-		    else:
-		        print('Found template at position #' + str(positionNumber))
-		        print('The accuracy score is: ' + str(accuracyScore))
-
-		    ## OPTIONAL stuff
-		    ##
-
-		    ## Loads the found template to charbuffer 1
-		    f.loadTemplate(positionNumber, 0x01)
-
-		    ## Downloads the characteristics of template loaded in charbuffer 1
-		    characterics = str(f.downloadCharacteristics(0x01)).encode('utf-8')
-
-		    ## Hashes characteristics of template
-		    sha = hashlib.sha256(characterics).hexdigest();
-
-		    print('SHA-2 hash of template: ' + hashlib.sha256(characterics).hexdigest())
-
-		except Exception as e:
-		    print('Operation failed!')
-		    print('Exception message: ' + str(e))
-		    exit(1)
-
-
-
+		sha = self.get_finger_sha();
 
 		name = raw_input("Please enter your name?")
 
@@ -293,7 +278,6 @@ class Figpi:
 
 
 	def enroll_student(self):
-		sha = ""
 
 		try:
 		    f = PyFingerprint('/dev/serial0', 57600, 0xFFFFFFFF, 0x00000000)
@@ -358,67 +342,7 @@ class Figpi:
 		    exit(1)
 
 
-		## Search for a finger
-		##
-
-		## Tries to initialize the sensor
-		try:
-		    f = PyFingerprint('/dev/serial0', 57600, 0xFFFFFFFF, 0x00000000)
-
-		    if ( f.verifyPassword() == False ):
-		        raise ValueError('The given fingerprint sensor password is wrong!')
-
-		except Exception as e:
-		    print('The fingerprint sensor could not be initialized!')
-		    print('Exception message: ' + str(e))
-		    exit(1)
-
-		## Gets some sensor information
-		print('Currently used templates: ' + str(f.getTemplateCount()) +'/'+ str(f.getStorageCapacity()))
-
-		## Tries to search the finger and calculate hash
-		try:
-		    print('Waiting for finger...')
-
-		    ## Wait that finger is read
-		    while ( f.readImage() == False ):
-		        pass
-
-		    ## Converts read image to characteristics and stores it in charbuffer 1
-		    f.convertImage(0x01)
-
-		    ## Searchs template
-		    result = f.searchTemplate()
-
-		    positionNumber = result[0]
-		    accuracyScore = result[1]
-
-		    if ( positionNumber == -1 ):
-		        print('No match found!')
-		        exit(0)
-		    else:
-		        print('Found template at position #' + str(positionNumber))
-		        print('The accuracy score is: ' + str(accuracyScore))
-
-		    ## OPTIONAL stuff
-		    ##
-
-		    ## Loads the found template to charbuffer 1
-		    f.loadTemplate(positionNumber, 0x01)
-
-		    ## Downloads the characteristics of template loaded in charbuffer 1
-		    characterics = str(f.downloadCharacteristics(0x01)).encode('utf-8')
-
-		    ## Hashes characteristics of template
-		    sha = hashlib.sha256(characterics).hexdigest();
-
-		    print('SHA-2 hash of template: ' + hashlib.sha256(characterics).hexdigest())
-
-		except Exception as e:
-		    print('Operation failed!')
-		    print('Exception message: ' + str(e))
-		    exit(1)
-
+		sha = self.get_finger_sha();
 
 		name = raw_input("Please enter your name?")
 		roll = raw_input("Please enter your roll number?")
@@ -431,11 +355,65 @@ class Figpi:
 		conn.commit();
 		conn.close();
 
-	def take_attendance(self):
+	def getCourses(self,sha):
+		conn = sq.connect("attendance.db");
+		c  = conn.cursor();
+
+		c.execute("SELECT id FROM faculty WHERE sha = ?", (sha,))
+		 
+		faculty = c.fetchall()
+
+		c.execute("SELECT cno FROM class WHERE facultyid = ?", (faculty[0][0],))
+		
+		courses = c.fetchall()		
+
+		conn.commit();
+		conn.close();
+
+		return courses;
+
+	def take_for_course(self,course,fsha):
+		while True:
+			self.printLCD("Place Student\nFinger Print")
+
+			today = datetime.today()
+			day = today.day
+			month = today.month
+			year = today.year;
+
+			conn = sq.connect("attendance.db");
+			c  = conn.cursor();
+
+			sha = self.get_finger_sha()
+
+			c.execute("SELECT f.id,f.name FROM faculty as f WHERE sha=?", (sha,))
+			rows = c.fetchall()
+			# print(rows)
+			if len(rows) > 0 and sha == fsha:
+				self.printLCD("Class Ended")
+				time.sleep(2);
+				break;
+
+			c.execute("SELECT s.id,s.name,s.roll FROM student as s WHERE sha=?", (sha,))
+			rows = c.fetchall()
+
+			# print("Attendance given by ",rows[0][1])
+			self.printLCD(rows[0][1]+"\n"+rows[0][2])
+
+			studentid = rows[0][0]
+
+			c.execute("SELECT c.id FROM class as c WHERE c.cno = ?", (course,))
+			rows = c.fetchall()
+			courseid = rows[0][0]
+
+			c.execute("INSERT into attendance3(studentid,courseid,day,month,year,syncstatus) VALUES(?,?,?,?,?,0)", (studentid,courseid,day,month,year) )
+
+			conn.commit();
+			conn.close();
+			time.sleep(2);
+
+	def get_finger_sha(self):
 		sha = ""
-
-		name = raw_input("Attendance for which course number ? : ")
-
 		## Search for a finger
 		##
 
@@ -473,7 +451,8 @@ class Figpi:
 
 		    if ( positionNumber == -1 ):
 		        print('No match found!')
-		        exit(0)
+		        self.printLCD('No match found!')
+		        self.startx()
 		    else:
 		        print('Found template at position #' + str(positionNumber))
 		        print('The accuracy score is: ' + str(accuracyScore))
@@ -497,41 +476,26 @@ class Figpi:
 		    print('Exception message: ' + str(e))
 		    exit(1)
 
+		return sha;
+
+	def take_attendance(self):
+		sha = ""
+
+		self.printLCD("Put Faculty \n Finger Print")
+
+		# name = raw_input("Attendance for which course number ? : ")
+
+		sha = self.get_finger_sha();
+
+		courses = self.getCourses(sha);
+
+		print(courses)
+
+		selected = self.makeMenu(courses)
+		self.take_for_course( courses[ selected ][0],sha)
 
 
-
-		today = datetime.today()
-
-		day = today.day
-		month = today.month
-		year = today.year;
-
-
-		conn = sq.connect("attendance.db");
-
-		c  = conn.cursor();
-
-		c.execute("SELECT s.id,s.name,s.roll FROM student as s WHERE sha=?", (sha,))
-		 
-		rows = c.fetchall()
-
-		print("Attendance given by ",rows[0][1])
-
-		self.printLCD(rows[0][1]+"\n"+rows[0][2])
-
-		studentid = rows[0][0]
-
-		c.execute("SELECT c.id FROM class as c WHERE c.cno = ?", (name,))
-
-		rows = c.fetchall()
-
-		courseid = rows[0][0]
-
-		c.execute(''' insert into attendance3(studentid,courseid,day,month,year,syncstatus) values(?,?,?,?,?,0)''', (studentid,courseid,day,month,year) )
-
-		conn.commit();
-
-		conn.close();
+		
 
 	def endprogram(self):
          GPIO.cleanup()
@@ -551,9 +515,13 @@ if __name__ == "__main__":
 	     print('keyboard interrupt detected')
 	     fa.endprogram()
 
+	
+
+
+
 	# fa.enroll_student()
 	# fa.printLCD("Communication\nBitch !")
-	# fa.take_attendance();
+	# fa.push_attendance();
 	
 
 
