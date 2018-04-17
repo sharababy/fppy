@@ -6,8 +6,115 @@ import Adafruit_CharLCD as LCD
 import sqlite3 as sq;
 from pyfingerprint.pyfingerprint import PyFingerprint
 from datetime import datetime
+from urllib import urlencode
+from urllib2 import Request, urlopen
+import RPi.GPIO as GPIO
+
+left 	= 6
+right 	= 5
+select 	= 16
+
+current_menu = 0;
 
 class Figpi:
+
+	def setup(self):
+		self.printMenuItem(0)		
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setup(left, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(right, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+		GPIO.setup(select, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+	def printMenuItem(self, item):
+
+		if item == 1:
+			self.printLCD("-Use Arrow Keys-\nTake Attendance");
+		
+		elif item == 2:
+			self.printLCD("-Use Arrow Keys-\nEnroll Faculty");
+		
+		elif item == 3:
+			self.printLCD("-Use Arrow Keys-\nEnroll Student");
+
+		else:
+			self.printLCD("-Use Arrow Keys-\nReady !")
+
+	def startx(self):
+		global current_menu;
+		while True:			
+			# print("yo")
+			if  GPIO.input(left) == False:
+				
+				print('Left Button Pressed...')
+				
+				if current_menu > 1:
+
+					current_menu = current_menu-1;
+					print(current_menu)
+					self.printMenuItem(current_menu)
+				while GPIO.input(left) == False:
+					time.sleep(0.2)
+
+			if GPIO.input(right) == False:
+				
+				print('Right Button Pressed...')
+				
+				if current_menu < 3:
+					current_menu = current_menu+1;
+					print(current_menu)
+					self.printMenuItem(current_menu)
+
+				while GPIO.input(right) == False:
+					time.sleep(0.2)
+
+
+			# elif GPIO.input(select) == True:
+				
+			# 	print('Select Button Pressed...')
+			# 	while GPIO.input(select) == True:
+			# 		time.sleep(0.2)
+
+	def push_attendance(self):
+		conn = sq.connect("./attendance.db");
+		c  = conn.cursor();
+
+		c.execute("SELECT * FROM attendance3 where syncstatus = 0")
+		rows = c.fetchall()
+
+		print(rows)
+
+		url = 'http://192.168.43.143:3000/newAttendanceFile' # Set destination URL here
+		post_fields = {
+						'year': 3,
+						'data':rows
+						}     # Set POST fields here
+
+		request = Request(url, urlencode(post_fields).encode())
+
+		json = urlopen(request).read().decode()
+		# print(json)
+
+		c.execute("UPDATE attendance3 set syncstatus = 1 where syncstatus = 0;")
+
+		conn.close();
+
+
+	def create_class(self):
+		cno = raw_input("Enter course number : ");
+		name = raw_input("Enter class name : ");
+		faculty = raw_input("Enter faculty id : ");
+		classcount = raw_input("Enter number of classes in a semester : ");
+
+		conn = sq.connect("attendance.db");
+		c  = conn.cursor();
+
+		c.execute(''' insert into class(cno,classcount,name,facultyid) values(?,?,?,?)''', (cno,classcount,name,faculty) )
+
+		conn.commit();
+		conn.close();
+
+
+
 
 	def printLCD(self,msg):
 
@@ -28,6 +135,161 @@ class Figpi:
 		lcd.clear()
 		lcd.message(msg)
 		
+
+	def enroll_faculty(self):
+		sha = ""
+
+		## Enrolls new finger
+		##
+
+		## Tries to initialize the sensor
+		try:
+		    f = PyFingerprint('/dev/serial0', 57600, 0xFFFFFFFF, 0x00000000)
+
+		    if ( f.verifyPassword() == False ):
+		        raise ValueError('The given fingerprint sensor password is wrong!')
+
+		except Exception as e:
+		    print('The fingerprint sensor could not be initialized!')
+		    print('Exception message: ' + str(e))
+		    exit(1)
+
+		## Gets some sensor information
+		print('Currently used templates: ' + str(f.getTemplateCount()) +'/'+ str(f.getStorageCapacity()))
+
+		## Tries to enroll new finger
+		try:
+		    print('Waiting for finger...')
+
+		    ## Wait that finger is read
+		    while ( f.readImage() == False ):
+		        pass
+
+		    ## Converts read image to characteristics and stores it in charbuffer 1
+		    f.convertImage(0x01)
+
+		    ## Checks if finger is already enrolled
+		    result = f.searchTemplate()
+		    positionNumber = result[0]
+
+		    if ( positionNumber >= 0 ):
+		        print('Template already exists at position #' + str(positionNumber))
+		        exit(0)
+
+		    print('Remove finger...')
+		    time.sleep(2)
+
+		    print('Waiting for same finger again...')
+
+		    ## Wait that finger is read again
+		    while ( f.readImage() == False ):
+		        pass
+
+		    ## Converts read image to characteristics and stores it in charbuffer 2
+		    f.convertImage(0x02)
+
+		    ## Compares the charbuffers
+		    if ( f.compareCharacteristics() == 0 ):
+		        raise Exception('Fingers do not match')
+
+		    ## Creates a template
+		    f.createTemplate()
+
+		    ## Saves template at new position number
+		    positionNumber = f.storeTemplate()
+		    print('Finger enrolled successfully!')
+		    print('New template position #' + str(positionNumber))
+
+		except Exception as e:
+		    print('Operation failed!')
+		    print('Exception message: ' + str(e))
+		    exit(1)
+
+
+
+
+		## Search for a finger
+		##
+
+		## Tries to initialize the sensor
+		try:
+		    f = PyFingerprint('/dev/serial0', 57600, 0xFFFFFFFF, 0x00000000)
+
+		    if ( f.verifyPassword() == False ):
+		        raise ValueError('The given fingerprint sensor password is wrong!')
+
+		except Exception as e:
+		    print('The fingerprint sensor could not be initialized!')
+		    print('Exception message: ' + str(e))
+		    exit(1)
+
+		## Gets some sensor information
+		print('Currently used templates: ' + str(f.getTemplateCount()) +'/'+ str(f.getStorageCapacity()))
+
+		## Tries to search the finger and calculate hash
+		try:
+		    print('Waiting for finger...')
+
+		    ## Wait that finger is read
+		    while ( f.readImage() == False ):
+		        pass
+
+		    ## Converts read image to characteristics and stores it in charbuffer 1
+		    f.convertImage(0x01)
+
+		    ## Searchs template
+		    result = f.searchTemplate()
+
+		    positionNumber = result[0]
+		    accuracyScore = result[1]
+
+		    if ( positionNumber == -1 ):
+		        print('No match found!')
+		        exit(0)
+		    else:
+		        print('Found template at position #' + str(positionNumber))
+		        print('The accuracy score is: ' + str(accuracyScore))
+
+		    ## OPTIONAL stuff
+		    ##
+
+		    ## Loads the found template to charbuffer 1
+		    f.loadTemplate(positionNumber, 0x01)
+
+		    ## Downloads the characteristics of template loaded in charbuffer 1
+		    characterics = str(f.downloadCharacteristics(0x01)).encode('utf-8')
+
+		    ## Hashes characteristics of template
+		    sha = hashlib.sha256(characterics).hexdigest();
+
+		    print('SHA-2 hash of template: ' + hashlib.sha256(characterics).hexdigest())
+
+		except Exception as e:
+		    print('Operation failed!')
+		    print('Exception message: ' + str(e))
+		    exit(1)
+
+
+
+
+		name = raw_input("Please enter your name?")
+
+		conn = sq.connect("attendance.db");
+
+		c  = conn.cursor();
+
+
+		# c.execute(''' ''')
+
+
+
+		c.execute(''' insert into faculty(name,sha) values(?,?)''', (name,sha) )
+
+
+		conn.commit();
+
+		conn.close();
+
 
 
 	def enroll_student(self):
@@ -271,20 +533,31 @@ class Figpi:
 
 		conn.close();
 
+	def endprogram(self):
+         GPIO.cleanup()
 
 
 
 if __name__ == "__main__":
 
+
 	fa = Figpi()
+	fa.setup()
+	          
+	try:
+	    fa.startx()
+
+	except KeyboardInterrupt:
+	     print('keyboard interrupt detected')
+	     fa.endprogram()
 
 	# fa.enroll_student()
-	fa.printLCD("Ready !")
-	fa.take_attendance();
+	# fa.printLCD("Communication\nBitch !")
+	# fa.take_attendance();
 	
 
 
-# 5,6,16
+# 29,31,36
 
 
 
