@@ -35,14 +35,17 @@ class Figpi:
 		
 		elif item == 3:
 			self.printLCD("-Use Arrow Keys-\nEnroll Student");
-
+		
+		elif item == 4:
+			self.printLCD("-Use Arrow Keys-\nPush to server");
+		
 		else:
 			self.printLCD("-Use Arrow Keys-\nReady !")
 
 
 	def makeMenu(self,options):
 		menu = -1
-		self.printLCD("-Use Arrow Keys-")
+		self.printLCD("-Use Arrow Keys-\nSelect a course")
 		while True:			
 			if  GPIO.input(left) == False:
 				
@@ -83,6 +86,8 @@ class Figpi:
 			self.enroll_faculty();
 		elif item == 3:
 			self.enroll_student();
+		elif item == 4:
+			self.push_attendance();
 
 	def startx(self):
 		self.printMenuItem(0)
@@ -105,7 +110,7 @@ class Figpi:
 				
 				print('Right Button Pressed...')
 				
-				if current_menu < 3:
+				if current_menu < 4:
 					current_menu = current_menu+1;
 					print(current_menu)
 					self.printMenuItem(current_menu)
@@ -125,16 +130,29 @@ class Figpi:
 		conn = sq.connect("./attendance.db");
 		c  = conn.cursor();
 
-		c.execute("SELECT * FROM attendance3 where syncstatus = 0")
+		c.execute("SELECT * FROM attendance3 where syncstatus = 0;")
 		rows = c.fetchall()
+
+		c.execute("SELECT * FROM class;")
+		courses = c.fetchall()
+
+		c.execute("SELECT * FROM faculty;")
+		faculty = c.fetchall()
+
+		c.execute("SELECT * FROM student;")
+		students = c.fetchall()
 
 		print(rows)
 
 		url = 'http://192.168.43.143:3000/newAttendanceFile' # Set destination URL here
 		post_fields = {
 						'year': 3,
-						'data':rows
-						}     # Set POST fields here
+						'data':rows,
+						'courses':courses,
+						'faculty':faculty,
+						'students':students
+						}
+						# Set POST fields here
 
 		request = Request(url, urlencode(post_fields).encode())
 
@@ -391,7 +409,8 @@ class Figpi:
 			# print(rows)
 			if len(rows) > 0 and sha == fsha:
 				self.printLCD("Class Ended")
-				time.sleep(2);
+				time.sleep(3);
+				self.printMenuItem(0);
 				break;
 
 			c.execute("SELECT s.id,s.name,s.roll FROM student as s WHERE sha=?", (sha,))
@@ -452,7 +471,9 @@ class Figpi:
 		    if ( positionNumber == -1 ):
 		        print('No match found!')
 		        self.printLCD('No match found!')
-		        self.startx()
+		        time.sleep(2);
+		        return self.get_finger_sha();
+		        # self.startx()
 		    else:
 		        print('Found template at position #' + str(positionNumber))
 		        print('The accuracy score is: ' + str(accuracyScore))
@@ -526,8 +547,6 @@ if __name__ == "__main__":
 
 
 # 29,31,36
-
-
 
 
 
